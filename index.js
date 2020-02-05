@@ -73,16 +73,27 @@ const genDaily = ({
   return rows
 }
 
-const genYear = ({ year, Email }) => {
-  const start = moment.tz(`${year}-01-01 00:00:00`, 'America/Toronto')
-  const end = moment(start).endOf('year')
-  const range = moment.range(start, end)
-
+const logHeader = () => {
   console.log(COLUMNS.map(c => `"${c}"`).join(','))
+}
+
+const genRange = ({ start, end, Email, vacations = [] }) => {
+  const range = moment.range(
+    moment.tz(start, TZ).startOf('day'),
+    moment.tz(end, TZ).endOf('day'),
+  )
+  const vacays = vacations.map(({ start, end }) => moment.range(
+    moment.tz(start, TZ).startOf('day'),
+    moment.tz(end, TZ).endOf('day'),
+  ))
+
   for (let day of range.by('day')) {
     // skip weekends and public holidays
-    // TODO: skip given vacation days too
     if (HD.isHoliday(day.toDate()) || [6, 7].includes(day.isoWeekday())) {
+      continue
+    }
+    // skip given vacation days
+    if (vacays.find(r => r.contains(day))) {
       continue
     }
     genDaily({ Email, day }).forEach((v) => {
@@ -91,7 +102,15 @@ const genYear = ({ year, Email }) => {
   }
 }
 
-
 if (require.main === module) {
-  genYear({ year: '2019', Email: 'leo.li@eqworks.com' })
+  logHeader()
+  genRange({
+    start: '2019-01-01',
+    end: '2019-12-31',
+    Email: 'ianecc@eqworks.com',
+    vacations: [
+      { start: '2019-10-23', end: '2019-10-30' },
+      { start: '2019-12-23', end: '2019-01-03' },
+    ],
+  })
 }
