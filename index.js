@@ -46,13 +46,19 @@ const genDaily = ({
     LOCUS: 1,
     ATOM: 0,
   },
+  tasks = {
+    Development: 0.7,
+    'Research/Design': 0.1,
+    'QA/Maintenance': 0.1,
+    'Admin/Ops': 0.1,
+  },
 }) => {
   const startDate = (day ? moment.tz(day, TZ) : moment.tz(TZ)).format('YYYY-MM-DD')
   let startTime = moment.tz(`${startDate} ${start}`, TZ).utc()
   const durations = {}
 
   shuffle(Object.entries(projects)).filter(([, pportion]) => pportion > 0).forEach(([Project, pportion]) => {
-    shuffle(Object.entries(rt)).filter(([, portion]) => portion > 0).forEach(([Task, portion]) => {
+    shuffle(Object.entries(tasks)).filter(([, portion]) => portion > 0).forEach(([Task, portion]) => {
       // per-task, per-day error
       const err = genError()
       const d = moment.duration(hours * pportion * portion * err, 'hours')
