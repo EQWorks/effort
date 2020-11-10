@@ -4,6 +4,8 @@ const Moment = require('moment-timezone')
 const { extendMoment } = require('moment-range')
 const moment = extendMoment(Moment)
 
+const { loadPeepo, getVacays } = require('./peepo')
+
 
 const COLUMNS = Object.freeze([
   // 'User',
@@ -87,8 +89,10 @@ const logHeader = () => {
 }
 
 const genRange = ({
+  after, // boundary start (inclusive)
+  before, // boundary end (inclusive)
   start,
-  end,
+  end, // optional
   Email,
   vacations = [],
   tasks = {
@@ -97,11 +101,24 @@ const genRange = ({
     'QA/Maintenance': 0.1,
     'Admin/Ops': 0.1,
   },
+  offWeekDays, // ISO weekdays that are off
 }) => {
-  const range = moment.range(
-    moment.tz(start, TZ).startOf('day'),
-    moment.tz(end, TZ).endOf('day'),
-  )
+  const bStart = moment.tz(after, TZ).startOf('day')
+  const bEnd = moment.tz(before, TZ).startOf('day')
+  let pStart = moment.tz(start, TZ).startOf('day')
+  let pEnd = moment.tz(end || before, TZ).endOf('day')
+  if (pEnd.isBefore(bStart) || pStart.isAfter(bEnd)) {
+    return // no gen for this person, since started or ended out of boundary range
+  }
+  // fit start/end to boundary
+  if (bStart.isAfter(pStart)) {
+    pStart = bStart
+  }
+  if (bEnd.isBefore(pEnd)) {
+    pEnd = bEnd
+  }
+  const range = moment.range(pStart, pEnd)
+
   const vacays = vacations.map(({ start, end }) => moment.range(
     moment.tz(start, TZ).startOf('day'),
     moment.tz(end, TZ).endOf('day'),
@@ -115,6 +132,10 @@ const genRange = ({
     if (HD.isHoliday(day.toDate()) || [6, 7].includes(day.isoWeekday())) {
       continue
     }
+    // skip fixed off days
+    if ((offWeekDays || '').split(',').filter(d => d).map(d => parseInt(d)).includes(day.isoWeekday())) {
+      continue
+    }
     // skip given vacation days
     if (vacays.find(r => r.contains(day))) {
       continue
@@ -126,7 +147,23 @@ const genRange = ({
 }
 
 if (require.main === module) {
-  const peepo = []
+  // TODO: parameterize these
+  const after = '2020-01-01' // inclusive
+  const before = '2020-09-30' // inclusive
+  const peepoSheet = './employees.csv'
+  // print out CSV
   logHeader()
-  peepo.forEach(p => { genRange(p) })
+  Promise.all([
+    loadPeepo(peepoSheet), // source from accounting team
+    getVacays({ after, before })
+  ]).then(([peepo, vacays]) => {
+    peepo.forEach((p) => {
+      genRange({
+        after,
+        before,
+        ...p,
+        vacations: vacays[p.Email.toLowerCase()],
+      })
+    })
+  })
 }

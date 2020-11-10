@@ -5,6 +5,8 @@
   "author": "woozyking <runzhou.li@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "asana": "^0.18.5",
+    "csvtojson": "^2.0.10",
     "date-holidays": "^1.4.12",
     "lodash.shuffle": "^4.2.0",
     "moment-range": "^4.0.2",
