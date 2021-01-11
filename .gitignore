@@ -1,3 +1,6 @@
+vacays*.json
+employees*.csv
+
 # Logs
 logs
 *.log
