@@ -88,6 +88,8 @@ const logHeader = () => {
   console.log(COLUMNS.map(c => `"${c}"`).join(','))
 }
 
+const isVacay = ({ end }) => end.length === 10
+
 const genRange = ({
   after, // boundary start (inclusive)
   before, // boundary end (inclusive)
@@ -120,7 +122,7 @@ const genRange = ({
   }
   const range = moment.range(pStart, pEnd)
   // vacation ranges
-  const vacays = vacations.map(({ start, end }) => moment.range(
+  const vacays = vacations.filter(isVacay).map(({ start, end }) => moment.range(
     moment.tz(start, TZ).startOf('day'),
     moment.tz(end, TZ).endOf('day'),
   ))
@@ -148,7 +150,15 @@ const genRange = ({
     if (vacays.find(r => r.contains(day))) {
       continue
     }
-    genDaily({ Email, day, tasks: rt }).forEach((v) => {
+    const unavails = vacations
+      .filter((v) => !isVacay(v))
+      .filter(({ end }) => moment.tz(day, TZ).startOf('day').isSame(moment.tz(end, TZ).startOf('day')))
+    genDaily({
+      Email,
+      day,
+      tasks: rt,
+      hours: HOURS - unavails.length,
+    }).forEach((v) => {
       console.log(Object.values(v).map(v => `"${v}"`).join(','))
     })
   }

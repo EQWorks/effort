@@ -28,7 +28,7 @@ const searchTasks = (params) => client.tasks.searchInWorkspace(ASANA_WORKSPACE, 
   is_subtask: false,
   sort_by: 'created_at',
   sort_ascending: true,
-  opt_fields: 'assignee.email,start_on,due_on,created_at',
+  opt_fields: 'assignee.email,start_on,due_on,due_at,created_at',
   limit: 100,
   ...params,
 }).then(({ data }) => data)
@@ -73,9 +73,9 @@ module.exports.getVacays = async ({
       await sleep(60 * 1000)
     }
   }
-  return data.reduce((acc, { gid, assignee, start_on: start, due_on: end }) => {
-    if (!acc.some((t) => t.gid === gid) && assignee && assignee.email && (start || end) <= before) {
-      acc.push({ email: assignee.email.toLowerCase(), start: start || end, end })
+  return data.reduce((acc, { gid, assignee, start_on: start, due_on, due_at }) => {
+    if (!acc.some((t) => t.gid === gid) && assignee && assignee.email && (start || due_on) <= before) {
+      acc.push({ email: assignee.email.toLowerCase(), start: start || due_at || due_on, end: due_at || due_on })
     }
     return acc
   }, []).reduce((acc, { email, start, end }) => {
