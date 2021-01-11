@@ -85,5 +85,5 @@ module.exports.getVacays = async ({
 }
 
 if (require.main === module) {
-  this.getVacays({ after: '2020-01-01', before: '2020-10-31' }).then(JSON.stringify).then(console.log)
+  this.getVacays({ after: '2020-01-01', before: '2020-12-31' }).then(JSON.stringify).then(console.log)
 }
