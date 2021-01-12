@@ -88,6 +88,8 @@ const logHeader = () => {
   console.log(COLUMNS.map(c => `"${c}"`).join(','))
 }
 
+const isVacay = ({ end }) => end.length === 10
+
 const genRange = ({
   after, // boundary start (inclusive)
   before, // boundary end (inclusive)
@@ -102,6 +104,7 @@ const genRange = ({
     'Admin/Ops': 0.1,
   },
   offWeekDays, // ISO weekdays that are off
+  offWeekDaysDurations, // ISO date ranges (YYYY-MM-DD to YYYY-MM-DD) to apply offWeekDays
 }) => {
   const bStart = moment.tz(after, TZ).startOf('day')
   const bEnd = moment.tz(before, TZ).startOf('day')
@@ -118,8 +121,14 @@ const genRange = ({
     pEnd = bEnd
   }
   const range = moment.range(pStart, pEnd)
-
-  const vacays = vacations.map(({ start, end }) => moment.range(
+  // vacation ranges
+  const vacays = vacations.filter(isVacay).map(({ start, end }) => moment.range(
+    moment.tz(start, TZ).startOf('day'),
+    moment.tz(end, TZ).endOf('day'),
+  ))
+  // off weekdays ranges
+  const owdDurations = offWeekDaysDurations.split(',').map((d) => d.split('to').map((d) => d.trim()))
+  const owds = owdDurations.map(([start, end]) => moment.range(
     moment.tz(start, TZ).startOf('day'),
     moment.tz(end, TZ).endOf('day'),
   ))
@@ -133,14 +142,23 @@ const genRange = ({
       continue
     }
     // skip fixed off days
-    if ((offWeekDays || '').split(',').filter(d => d).map(d => parseInt(d)).includes(day.isoWeekday())) {
+    const isOffWD = (offWeekDays || '').split(',').filter(d => d).map(d => parseInt(d)).includes(day.isoWeekday())
+    if (owds.find(r => r.contains(day)) && isOffWD) {
       continue
     }
     // skip given vacation days
     if (vacays.find(r => r.contains(day))) {
       continue
     }
-    genDaily({ Email, day, tasks: rt }).forEach((v) => {
+    const unavails = vacations
+      .filter((v) => !isVacay(v))
+      .filter(({ end }) => moment.tz(day, TZ).startOf('day').isSame(moment.tz(end, TZ).startOf('day')))
+    genDaily({
+      Email,
+      day,
+      tasks: rt,
+      hours: HOURS - unavails.length,
+    }).forEach((v) => {
       console.log(Object.values(v).map(v => `"${v}"`).join(','))
     })
   }
@@ -148,9 +166,9 @@ const genRange = ({
 
 if (require.main === module) {
   // TODO: parameterize these
-  const after = '2020-01-01' // inclusive
-  const before = '2020-09-30' // inclusive
-  const peepoSheet = './employees.csv'
+  const after = '2020-10-01' // inclusive
+  const before = '2020-12-31' // inclusive
+  const peepoSheet = './employees_2020.csv'
   // print out CSV
   logHeader()
   Promise.all([
