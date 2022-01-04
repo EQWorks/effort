@@ -44,10 +44,7 @@ const genDaily = ({
   day,
   hours = HOURS,
   start = START,
-  projects = {
-    LOCUS: 1,
-    ATOM: 0,
-  },
+  togglProject = 'Engineering',
   tasks = {
     Development: 0.7,
     'Research/Design': 0.1,
@@ -59,17 +56,15 @@ const genDaily = ({
   let startTime = moment.tz(`${startDate} ${start}`, TZ).utc()
   const durations = {}
 
-  shuffle(Object.entries(projects)).filter(([, pportion]) => pportion > 0).forEach(([Project, pportion]) => {
-    shuffle(Object.entries(tasks)).filter(([, portion]) => portion > 0).forEach(([Task, portion]) => {
-      // per-task, per-day error
-      const err = genError()
-      const d = moment.duration(hours * pportion * portion * err, 'hours')
-      durations[`${Project}::${Task}`] = {
-        startTime: startTime.format('HH:mm:ss'),
-        Duration: moment.utc(d.asMilliseconds()).format('HH:mm:ss'),
-      }
-      startTime.add(d)
-    })
+  shuffle(Object.entries(tasks)).filter(([, portion]) => portion > 0).forEach(([Task, portion]) => {
+    // per-task, per-day error
+    const err = genError()
+    const d = moment.duration(hours * portion * err, 'hours')
+    durations[`${togglProject}::${Task}`] = {
+      startTime: startTime.format('HH:mm:ss'),
+      Duration: moment.utc(d.asMilliseconds()).format('HH:mm:ss'),
+    }
+    startTime.add(d)
   })
 
   const rows = Object.entries(durations).map(([key, { startTime, Duration }]) => ({
@@ -97,12 +92,14 @@ const genRange = ({
   end, // optional
   Email,
   vacations = [],
+  togglProject = 'Engineering',
   tasks = {
     Development: 0.7,
     'Research/Design': 0.1,
     'QA/Maintenance': 0.1,
     'Admin/Ops': 0.1,
   },
+  companyHolidays = [], // list of strings in YYYY-MM-DD format
   offWeekDays, // ISO weekdays that are off
   offWeekDaysDurations, // ISO date ranges (YYYY-MM-DD to YYYY-MM-DD) to apply offWeekDays
 }) => {
@@ -141,6 +138,10 @@ const genRange = ({
     if (HD.isHoliday(day.toDate()) || [6, 7].includes(day.isoWeekday())) {
       continue
     }
+    // skip company holidays
+    if (companyHolidays.includes(day.format('YYYY-MM-DD'))) {
+      continue
+    }
     // skip fixed off days
     const isOffWD = (offWeekDays || '').split(',').filter(d => d).map(d => parseInt(d)).includes(day.isoWeekday())
     if (owds.find(r => r.contains(day)) && isOffWD) {
@@ -158,6 +159,7 @@ const genRange = ({
       day,
       tasks: rt,
       hours: HOURS - unavails.length,
+      togglProject,
     }).forEach((v) => {
       console.log(Object.values(v).map(v => `"${v}"`).join(','))
     })
@@ -165,15 +167,12 @@ const genRange = ({
 }
 
 if (require.main === module) {
-  // TODO: parameterize these
-  const after = '2020-10-01' // inclusive
-  const before = '2020-12-31' // inclusive
-  const peepoSheet = './employees_2020.csv'
+  const [after, before, peepoSheet, togglProject = 'Engineering'] = process.argv.slice(2)
   // print out CSV
   logHeader()
   Promise.all([
     loadPeepo(peepoSheet), // source from accounting team
-    getVacays({ after, before })
+    getVacays({ after, before }),
   ]).then(([peepo, vacays]) => {
     peepo.forEach((p) => {
       genRange({
@@ -181,6 +180,21 @@ if (require.main === module) {
         before,
         ...p,
         vacations: vacays[p.Email.toLowerCase()],
+        togglProject,
+        companyHolidays: [
+          // TODO: better range support, including half-day holidays
+          // '2021-12-24', // second half day-off
+          '2021-12-25',
+          '2021-12-26',
+          '2021-12-27',
+          '2021-12-28',
+          '2021-12-29',
+          '2021-12-30',
+          '2021-12-31',
+          '2022-01-01',
+          '2022-01-02',
+          '2022-01-03',
+        ],
       })
     })
   })

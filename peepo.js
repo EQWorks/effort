@@ -18,9 +18,9 @@ module.exports.loadPeepo = (sheet) => csv().fromFile(sheet)
 //   { gid: '1152701043959236', name: 'Vacation' },
 //   { gid: '1153045408573969', name: 'Not Avail (not able to work)' }
 // ]
-const getSections = (project = ASANA_PROJECT) => client.sections.findByProject(project, {
-  opt_fields: 'gid,name'
-}).filter(({ name }) => name.toLowerCase().startsWith('vacation') || name.toLowerCase().startsWith('not avail'))
+// const getSections = (project = ASANA_PROJECT) => client.sections.findByProject(project, {
+//   opt_fields: 'gid,name'
+// }).filter(({ name }) => name.toLowerCase().startsWith('vacation') || name.toLowerCase().startsWith('not avail'))
 
 // https://developers.asana.com/docs/search-tasks-in-a-workspace
 const searchTasks = (params) => client.tasks.searchInWorkspace(ASANA_WORKSPACE, {
@@ -85,5 +85,6 @@ module.exports.getVacays = async ({
 }
 
 if (require.main === module) {
-  this.getVacays({ after: '2020-01-01', before: '2020-12-31' }).then(JSON.stringify).then(console.log)
+  const args = process.argv.slice(2)
+  this.getVacays({ after: args[0], before: args[1] }).then(JSON.stringify).then(console.log)
 }
