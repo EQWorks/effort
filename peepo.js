@@ -35,6 +35,7 @@ const searchTasks = (params) => client.tasks.searchInWorkspace(ASANA_WORKSPACE, 
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
+// deprecated by Humi sourced time offs (export or API)
 module.exports.getVacays = async ({
   after,
   before,
