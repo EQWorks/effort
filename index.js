@@ -4,7 +4,8 @@ const Moment = require('moment-timezone')
 const { extendMoment } = require('moment-range')
 const moment = extendMoment(Moment)
 
-const { loadPeepo, getVacays } = require('./peepo')
+const { loadPeepo } = require('./peepo')
+const humi = require('./humi')
 
 
 const COLUMNS = Object.freeze([
@@ -124,7 +125,7 @@ const genRange = ({
     moment.tz(end, TZ).endOf('day'),
   ))
   // off weekdays ranges
-  const owdDurations = offWeekDaysDurations.split(',').map((d) => d.split('to').map((d) => d.trim()))
+  const owdDurations = (offWeekDaysDurations || '').split(',').map((d) => d.split('to').map((d) => d.trim()))
   const owds = owdDurations.map(([start, end]) => moment.range(
     moment.tz(start, TZ).startOf('day'),
     moment.tz(end, TZ).endOf('day'),
@@ -167,12 +168,12 @@ const genRange = ({
 }
 
 if (require.main === module) {
-  const [after, before, peepoSheet, togglProject = 'Engineering'] = process.argv.slice(2)
+  const [after, before, peepoSheet, timeOffSheet, togglProject = 'Engineering', department = 'Product & Development'] = process.argv.slice(2)
   // print out CSV
   logHeader()
   Promise.all([
     loadPeepo(peepoSheet), // source from accounting team
-    getVacays({ after, before }),
+    humi.loadTimeOffs( timeOffSheet, { department }),
   ]).then(([peepo, vacays]) => {
     peepo.forEach((p) => {
       genRange({
@@ -184,16 +185,18 @@ if (require.main === module) {
         companyHolidays: [
           // TODO: better range support, including half-day holidays
           // '2021-12-24', // second half day-off
-          '2021-12-25',
-          '2021-12-26',
-          '2021-12-27',
-          '2021-12-28',
-          '2021-12-29',
-          '2021-12-30',
-          '2021-12-31',
+          // from last year
           '2022-01-01',
           '2022-01-02',
           '2022-01-03',
+          // office closed
+          '2022-12-26',
+          '2022-12-27',
+          '2022-12-28',
+          '2022-12-29',
+          '2022-12-30',
+          // for next year
+          '2023-01-02',
         ],
       })
     })

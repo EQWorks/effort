@@ -5,7 +5,7 @@
   "author": "woozyking <runzhou.li@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "generate": "env $(print-env) node index.js"
+    "generate": "node index.js"
   },
   "dependencies": {
     "asana": "^0.18.5",
