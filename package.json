@@ -13,6 +13,7 @@
     "date-holidays": "^1.4.12",
     "lodash.shuffle": "^4.2.0",
     "moment-range": "^4.0.2",
-    "moment-timezone": "^0.5.27"
+    "moment-timezone": "^0.5.27",
+    "csv-parser": "3.0.0"
   }
 }

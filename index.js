@@ -3,6 +3,8 @@ const Holidays = require('date-holidays')
 const Moment = require('moment-timezone')
 const { extendMoment } = require('moment-range')
 const moment = extendMoment(Moment)
+const fs = require('fs')
+const csvParser = require('csv-parser');
 
 const { loadPeepo } = require('./peepo')
 const humi = require('./humi')
@@ -80,8 +82,8 @@ const genDaily = ({
   return rows
 }
 
-const logHeader = () => {
-  console.log(COLUMNS.map(c => `"${c}"`).join(','))
+const getHeader = () => {
+  return COLUMNS.map(c => `"${c}"`).join(',') + '\n'
 }
 
 const isVacay = ({ end }) => end.length === 10
@@ -111,6 +113,7 @@ const genRange = ({
   if (pEnd.isBefore(bStart) || pStart.isAfter(bEnd)) {
     return // no gen for this person, since started or ended out of boundary range
   }
+  let rows = ''
   // fit start/end to boundary
   if (bStart.isAfter(pStart)) {
     pStart = bStart
@@ -155,28 +158,37 @@ const genRange = ({
     const unavails = vacations
       .filter((v) => !isVacay(v))
       .filter(({ end }) => moment.tz(day, TZ).startOf('day').isSame(moment.tz(end, TZ).startOf('day')))
-    genDaily({
+    
+    rows = rows + genDaily({
       Email,
       day,
       tasks: rt,
       hours: HOURS - unavails.length,
       togglProject,
-    }).forEach((v) => {
-      console.log(Object.values(v).map(v => `"${v}"`).join(','))
-    })
+    }).map((v) => Object.values(v).map(v => `"${v}"`).join(',')).join('\n')
+      + '\n'
   }
+
+  return rows
 }
 
 if (require.main === module) {
   const [after, before, peepoSheet, timeOffSheet, togglProject = 'Engineering', department = 'Product & Development'] = process.argv.slice(2)
-  // print out CSV
-  logHeader()
+
+  const outFilename = `timesheet_${after}_${before}`
+
   Promise.all([
     loadPeepo(peepoSheet), // source from accounting team
-    humi.loadTimeOffs( timeOffSheet, { department }),
+    humi.loadTimeOffs(timeOffSheet, { department }),
   ]).then(([peepo, vacays]) => {
-    peepo.forEach((p) => {
-      genRange({
+
+    let file = fs.createWriteStream(`${outFilename}.csv`)
+    file.write(getHeader())
+
+    for (let i = 0; i < peepo.length; i++) {
+      const p = peepo[i]
+      console.log(p)
+      file.write(genRange({
         after,
         before,
         ...p,
@@ -188,17 +200,72 @@ if (require.main === module) {
           // from last year
           '2022-01-01',
           '2022-01-02',
-          '2022-01-03',
           // office closed
-          '2022-12-26',
-          '2022-12-27',
-          '2022-12-28',
-          '2022-12-29',
-          '2022-12-30',
-          // for next year
-          '2023-01-02',
+          '2023-12-25',
+          '2023-12-26',
+          '2023-12-27',
+          '2023-12-28',
+          '2023-12-29',
         ],
+      }));
+    }
+
+    // Close the last file
+    file.close()
+
+    // create the summary file
+    const readableStream = fs.createReadStream(`${outFilename}.csv`);
+
+    // Create a writable stream for the output file
+    const writableStream = fs.createWriteStream(`${outFilename}_summary.csv`);
+
+    // Create a CSV parser
+    const parser = csvParser()
+
+    // Create a map to store the grouped data
+    const groupedData = new Map()
+
+    // Parse the input file and group the data
+    readableStream
+      .pipe(parser)
+      .on('data', (data) => {
+        const email = data.Email;
+        const project = data.Project;
+        const task = data.Task;
+        const duration = moment.duration(data.Duration);
+
+        // Get the existing group for the email, project, and task
+        let group = groupedData.get(email + project + task);
+
+        // If the group does not exist, create a new one
+        if (!group) {
+          group = {
+            email: email,
+            project: project,
+            task: task,
+            duration: moment.duration(0),
+          };
+
+          // Add the group to the map
+          groupedData.set(email + project + task, group);
+        }
+
+        // Add the duration to the group
+        group.duration.add(duration);
       })
-    })
+      .on('end', () => {
+        // Write the grouped data to the output file
+        writableStream.write('Email,Project,Task,Duration\n');
+        for (const group of groupedData.values()) {
+          const durationFormatted = `${group.duration.asHours().toFixed()}:${moment.utc(group.duration.asMilliseconds()).format("mm:ss")}`
+          writableStream.write(
+            `${group.email},${group.project},${group.task},${durationFormatted}\n`
+          );
+        }
+
+        // Close the writable stream
+        writableStream.end()
+      })
   })
+
 }
