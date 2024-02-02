@@ -1,18 +1,23 @@
 {
   "name": "@eqworks/effort",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
   "author": "woozyking <runzhou.li@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "generate": "node index.js"
+    "lint": "npx eslint ."
   },
   "dependencies": {
     "asana": "^0.18.5",
+    "commander": "^11.1.0",
+    "csv-parser": "3.0.0",
     "csvtojson": "^2.0.10",
     "date-holidays": "^1.4.12",
     "lodash.shuffle": "^4.2.0",
     "moment-range": "^4.0.2",
     "moment-timezone": "^0.5.27"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0"
   }
 }
